@@ -15,15 +15,15 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 
-#include <ros/ros.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <tf/transform_datatypes.h>
-#include <tf/transform_broadcaster.h>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <tf2_ros/transform_datatypes.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/Vector3.h>
 // #include <livox_ros_driver/CustomMsg.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
-#include <visualization_msgs/Marker.h>
+#include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/path.hpp>
+#include <visualization_msgs/msg/marker.h>
 
 #include "IMU_Processing.hpp"
 #include "parameters.h"
@@ -897,34 +897,28 @@ int main(int argc, char **argv)
 
     // ros::Subscriber sub_pcl = p_pre->lidar_type == AVIA ? nh.subscribe(lid_topic, 200000, livox_pcl_cbk) : nh.subscribe(lid_topic, 200000, standard_pcl_cbk);
     
-    ros::Subscriber sub_pcl = nh.subscribe(lid_topic, 200000, standard_pcl_cbk);
-
-    ros::Subscriber sub_imu = nh.subscribe(imu_topic, 200000, imu_cbk);
-
-    ros::Publisher pubLaserCloudFullRes = nh.advertise<sensor_msgs::PointCloud2>("/cloud_registered", 100000);
-
-    ros::Publisher pubLaserCloudFullRes_body = nh.advertise<sensor_msgs::PointCloud2>("/cloud_registered_body", 100000);
-
-    ros::Publisher pubLaserCloudEffect = nh.advertise<sensor_msgs::PointCloud2>("/cloud_effected", 100000);
-
-    ros::Publisher pubLaserCloudMap = nh.advertise<sensor_msgs::PointCloud2>("/Laser_map", 100000);
-
-    ros::Publisher pubOdomAftMapped = nh.advertise<nav_msgs::Odometry>("/aft_mapped_to_init", 100000);
-
-    ros::Publisher pubPath = nh.advertise<nav_msgs::Path>("/path", 100000);
-
-    ros::Publisher plane_pub = nh.advertise<visualization_msgs::Marker>("/planner_normal", 1000);
-
+    rclcpp::Subscriber sub_pcl = nh->create_subscription<sensor_msgs::msg::PointCloud2>(lid_topic, rclcpp::SensorDataQoS(), [](const sensor_msgs::msg::PointCloud2::SharedPtr msg){standard_pcl_cbk(msg)});
+    rclcpp::Subscriber sub_imu = nh->create_subscription<sensor_msgs::msg::Imu>(imu_topic, rclcpp::SensorDataQoS(), imu_cbk);
+    rclcpp::Publisher pubLaserCloudFullRes = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered", 100000);
+    rclcpp::Publisher pubLaserCloudFullRes_body = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body", 100000);
+    rclcpp::Publisher pubLaserCloudEffect = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_effected", 100000);
+    rclcpp::Publisher pubLaserCloudMap = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/Laser_map", 100000);
+    rclcpp::Publisher pubOdomAftMapped = nh->create_publisher<nav_msgs::msg::Odometry>("/aft_mapped_to_init", 100000);
+    rclcpp::Publisher pubPath = nh->create_publisher<nav_msgs::msg::Path>("/path", 100000);
+    rclcpp::Publisher plane_pub = nh->create_publisher<visualization_msgs::msg::Marker>("/planner_normal", 1000);
+    auto tf_broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(nh);
     signal(SIGINT, SigHandle);
 
-    ros::Rate rate(5000);
-    while (ros::ok())
+    rclcpp::Rate rate(5000);
+    rclcpp::executors::SingleThreadedExecutor executor;
+    executor.add_node(nh);
+    while (rclcpp::ok())
     {
 
         if (flg_exit)
             break;
 
-        ros::spinOnce();
+        executor.spin_some();
 
         if (sync_packages(Measures) == false)
         {
