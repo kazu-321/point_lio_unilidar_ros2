@@ -18,6 +18,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 // #include <tf2_ros/transform_datatypes.h>
+#include <tf2>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/vector3.hpp>
 // #include <livox_ros_driver/CustomMsg.h>
@@ -782,18 +783,16 @@ void publish_odometry(const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPt
 
     pubOdomAftMapped->publish(odomAftMapped);
 
-    static tf2_ros::TransformBroadcaster br;
-    tf2_ros::Transform transform;
-    tf2_ros::Quaternion q;
-    transform.setOrigin(tf::Vector3(odomAftMapped.pose.pose.position.x,
-                                    odomAftMapped.pose.pose.position.y,
-                                    odomAftMapped.pose.pose.position.z));
-    q.setW(odomAftMapped.pose.pose.orientation.w);
-    q.setX(odomAftMapped.pose.pose.orientation.x);
-    q.setY(odomAftMapped.pose.pose.orientation.y);
-    q.setZ(odomAftMapped.pose.pose.orientation.z);
-    transform.setRotation(q);
-    br.sendTransform(tf2_ros::StampedTransform(transform, odomAftMapped.header.stamp, "camera_init", "aft_mapped"));
+    tf2_ros::TransformBroadcaster br(node);
+    geometry_msgs::msg::TransformStamped transformStamped;
+    transformStamped.transform.translation.x = odomAftMapped.pose.pose.position.x;
+    transformStamped.transform.translation.y = odomAftMapped.pose.pose.position.y;
+    transformStamped.transform.translation.z = odomAftMapped.pose.pose.position.z;
+    transformStamped.transform.rotation = odomAftMapped.pose.pose.orientation;
+    transformStamped.header.stamp = rclcpp::Time(lidar_end_time);
+    transformStamped.header.frame_id = "camera_init";
+    transformStamped.child_frame_id = "aft_mapped";
+    br.sendTransform(transformStamped);
 }
 
 void publish_path(const rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubPath)
@@ -899,15 +898,15 @@ int main(int argc, char **argv)
 
     // ros::Subscriber sub_pcl = p_pre->lidar_type == AVIA ? nh.subscribe(lid_topic, 200000, livox_pcl_cbk) : nh.subscribe(lid_topic, 200000, standard_pcl_cbk);
     
-    rclcpp::Subscriber sub_pcl = nh->create_subscription<sensor_msgs::msg::PointCloud2>(lid_topic, rclcpp::SensorDataQoS(), [](const sensor_msgs::msg::PointCloud2::SharedPtr msg){standard_pcl_cbk(msg)});
-    rclcpp::Subscriber sub_imu = nh->create_subscription<sensor_msgs::msg::Imu>(imu_topic, rclcpp::SensorDataQoS(), imu_cbk);
-    rclcpp::Publisher pubLaserCloudFullRes = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered", 100000);
-    rclcpp::Publisher pubLaserCloudFullRes_body = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body", 100000);
-    rclcpp::Publisher pubLaserCloudEffect = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_effected", 100000);
-    rclcpp::Publisher pubLaserCloudMap = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/Laser_map", 100000);
-    rclcpp::Publisher pubOdomAftMapped = nh->create_publisher<nav_msgs::msg::Odometry>("/aft_mapped_to_init", 100000);
-    rclcpp::Publisher pubPath = nh->create_publisher<nav_msgs::msg::Path>("/path", 100000);
-    rclcpp::Publisher plane_pub = nh->create_publisher<visualization_msgs::msg::Marker>("/planner_normal", 1000);
+    auto sub_pcl = nh->create_subscription<sensor_msgs::msg::PointCloud2>(lid_topic, rclcpp::SensorDataQoS(), [](const sensor_msgs::msg::PointCloud2::SharedPtr msg){standard_pcl_cbk(msg)});
+    auto sub_imu = nh->create_subscription<sensor_msgs::msg::Imu>(imu_topic, rclcpp::SensorDataQoS(), imu_cbk);
+    auto pubLaserCloudFullRes = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered", 100000);
+    auto pubLaserCloudFullRes_body = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body", 100000);
+    auto pubLaserCloudEffect = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_effected", 100000);
+    auto pubLaserCloudMap = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/Laser_map", 100000);
+    auto pubOdomAftMapped = nh->create_publisher<nav_msgs::msg::Odometry>("/aft_mapped_to_init", 100000);
+    auto pubPath = nh->create_publisher<nav_msgs::msg::Path>("/path", 100000);
+    auto plane_pub = nh->create_publisher<visualization_msgs::msg::Marker>("/planner_normal", 1000);
     auto tf_broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(nh);
     signal(SIGINT, SigHandle);
 
