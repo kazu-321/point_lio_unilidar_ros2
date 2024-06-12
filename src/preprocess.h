@@ -1,8 +1,7 @@
-#pragma once
-
-#include <ros/ros.h>
+#include <deque
+#include <rclcpp/rclcpp.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/msg/point_cloud2.h>
 // #include <livox_ros_driver/CustomMsg.h>
 
 using namespace std;
@@ -142,7 +141,7 @@ class Preprocess
   ~Preprocess();
   
   // void process(const livox_ros_driver::CustomMsg::ConstPtr &msg, PointCloudXYZI::Ptr &pcl_out);
-  void process(const sensor_msgs::PointCloud2::ConstPtr &msg, PointCloudXYZI::Ptr &pcl_out);
+  void process(const sensor_msgs::msg::PointCloud2::SharedPtr &msg, PointCloudXYZI::Ptr &pcl_out);
   void set(bool feat_en, int lid_type, double bld, int pfilt_num);
 
   // sensor_msgs::PointCloud2::ConstPtr pointcloud;
@@ -154,17 +153,17 @@ class Preprocess
   int time_unit; 
   double blind;   
   bool given_offset_time;
-  ros::Publisher pub_full, pub_surf, pub_corn;
+  // ros::Publisher pub_full, pub_surf, pub_corn;
     
 
   private:
   // void avia_handler(const livox_ros_driver::CustomMsg::ConstPtr &msg);
-  void oust64_handler(const sensor_msgs::PointCloud2::ConstPtr &msg);
-  void velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg);
-  void unilidar_handler(const sensor_msgs::PointCloud2::ConstPtr &msg);
-  void hesai_handler(const sensor_msgs::PointCloud2::ConstPtr &msg);
+  void oust64_handler(const sensor_msgs::msg::PointCloud2::SharedPtr &msg);
+  void velodyne_handler(const sensor_msgs::msg::PointCloud2::SharedPtr &msg);
+  void unilidar_handler(const sensor_msgs::msg::PointCloud2::SharedPtr &msg);
+  void hesai_handler(const sensor_msgs::msg::PointCloud2::SharedPtr &msg);
   void give_feature(PointCloudXYZI &pl, vector<orgtype> &types);
-  void pub_func(PointCloudXYZI &pl, const ros::Time &ct);
+  void pub_func(PointCloudXYZI &pl, const rclcpp::Time &ct);
   int  plane_judge(const PointCloudXYZI &pl, vector<orgtype> &types, uint i, uint &i_nex, Eigen::Vector3d &curr_direct);
   bool small_plane(const PointCloudXYZI &pl, vector<orgtype> &types, uint i_cur, uint &i_nex, Eigen::Vector3d &curr_direct);
   bool edge_jump_judge(const PointCloudXYZI &pl, vector<orgtype> &types, uint i, Surround nor_dir);
