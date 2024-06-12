@@ -8,6 +8,7 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <tf2_ros/transform_broadcaster.h>
+#include <queue>
 // #include <eigen_conversions/eigen_msg.h>
 using namespace std;
 using namespace Eigen;
@@ -65,7 +66,7 @@ struct MeasureGroup     // Lidar data and imu dates for the curent process
     double lidar_beg_time;      // 点云起始时间戳
     double lidar_last_time;     // 点云结束时间戳，即最后一个点的时间戳
     PointCloudXYZI::Ptr lidar;  // 当前帧点云
-    deque<sensor_msgs::msg::Imu::ConstSharedPtr> imu;  // IMU队列
+    std::deque<sensor_msgs::msg::Imu::ConstSharedPtr> imu;  // IMU队列
 };
 
 template <typename T>

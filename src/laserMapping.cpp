@@ -19,7 +19,7 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 // #include <tf2_ros/transform_datatypes.h>
 #include <tf2_ros/transform_broadcaster.h>
-#include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/msg/vector3.hpp>
 // #include <livox_ros_driver/CustomMsg.h>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
