@@ -9,6 +9,11 @@
 #include <so3_math.h>
 #include <Eigen/Core>
 
+using std::placeholders::_1;
+#define BOOST_BIND_NO_PLACEHOLDERS
+// #include <boost/bind/bind.hpp>
+// // #include <boost/bind/placeholders.hpp>
+// using namespace boost::placeholders;
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -89,7 +94,7 @@ V3D euler_cur;
 MeasureGroup Measures;
 
 sensor_msgs::msg::Imu imu_last, imu_next;
-shared_ptr<sensor_msgs::msg::Imu> imu_last_ptr;
+std::shared_ptr<sensor_msgs::msg::Imu> imu_last_ptr;
 nav_msgs::msg::Path path;
 nav_msgs::msg::Odometry odomAftMapped;
 geometry_msgs::msg::PoseStamped msg_body_pose;
@@ -444,13 +449,13 @@ void standard_pcl_cbk(const sensor_msgs::msg::PointCloud2::SharedPtr &msg)
 //     sig_buffer.notify_all();
 // }
 
-void imu_cbk(const sensor_msgs::msg::Imu::SharedPtr &msg_in)
+void imu_cbk(const std::shared_ptr<sensor_msgs::msg::Imu> &msg_in)
 {
 
     publish_count++;
 
 
-    sensor_msgs::msg::Imu::Ptr msg(new sensor_msgs::msg::Imu(*msg_in));
+    std::shared_ptr<sensor_msgs::msg::Imu> msg(new sensor_msgs::msg::Imu(*msg_in));
     msg->header.stamp = rclcpp::Time(msg_in->header.stamp.sec - time_lag_imu_to_lidar);
 
     double timestamp = msg->header.stamp.sec;
@@ -766,7 +771,7 @@ void set_posestamp(T &out)
     }
 }
 
-void publish_odometry(const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr &pubOdomAftMapped)
+void publish_odometry(const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr &pubOdomAftMapped,shared_ptr<rclcpp::Node> &nh)
 {
     odomAftMapped.header.frame_id = "camera_init";
     odomAftMapped.child_frame_id = "aft_mapped";
@@ -781,8 +786,7 @@ void publish_odometry(const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPt
     set_posestamp(odomAftMapped.pose.pose);
 
     pubOdomAftMapped->publish(odomAftMapped);
-
-    tf2_ros::TransformBroadcaster br(node);
+    tf2_ros::TransformBroadcaster br(nh);
     geometry_msgs::msg::TransformStamped transformStamped;
     transformStamped.transform.translation.x = odomAftMapped.pose.pose.position.x;
     transformStamped.transform.translation.y = odomAftMapped.pose.pose.position.y;
@@ -812,10 +816,9 @@ void publish_path(const rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubPat
 int main(int argc, char **argv)
 {
 
-    rclcpp::init(argc, argv,);
+    rclcpp::init(argc, argv);
     // rclcpp::NodeHandle nh("~");
     auto nh = std::make_shared<rclcpp::Node>("laserMapping");
-
     readParameters(nh);
     cout << "lidar_type: " << lidar_type << endl;
 
@@ -897,8 +900,8 @@ int main(int argc, char **argv)
 
     // ros::Subscriber sub_pcl = p_pre->lidar_type == AVIA ? nh.subscribe(lid_topic, 200000, livox_pcl_cbk) : nh.subscribe(lid_topic, 200000, standard_pcl_cbk);
     
-    auto sub_pcl = nh->create_subscription<sensor_msgs::msg::PointCloud2>(lid_topic, rclcpp::SensorDataQoS(), [](const sensor_msgs::msg::PointCloud2::SharedPtr msg){standard_pcl_cbk(msg)});
-    auto sub_imu = nh->create_subscription<sensor_msgs::msg::Imu>(imu_topic, rclcpp::SensorDataQoS(), imu_cbk);
+    auto sub_pcl = nh->create_subscription<sensor_msgs::msg::PointCloud2>(lid_topic, rclcpp::SensorDataQoS(), [](const sensor_msgs::msg::PointCloud2::SharedPtr msg){standard_pcl_cbk(msg);});
+    auto sub_imu = nh->create_subscription<sensor_msgs::msg::Imu>(imu_topic, rclcpp::SensorDataQoS(), [](const sensor_msgs::msg::Imu::SharedPtr msg){imu_cbk(msg);});
     auto pubLaserCloudFullRes = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered", 100000);
     auto pubLaserCloudFullRes_body = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body", 100000);
     auto pubLaserCloudEffect = nh->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_effected", 100000);
@@ -1220,7 +1223,7 @@ int main(int argc, char **argv)
                 {
                     /******* Publish odometry *******/
 
-                    publish_odometry(pubOdomAftMapped);
+                    publish_odometry(pubOdomAftMapped,nh);
                     if (runtime_pos_log)
                     {
                         state_out = kf_output.x_;
@@ -1341,7 +1344,7 @@ int main(int argc, char **argv)
                 {
                     /******* Publish odometry *******/
 
-                    publish_odometry(pubOdomAftMapped);
+                    publish_odometry(pubOdomAftMapped,nh);
                     if (runtime_pos_log)
                     {
                         state_in = kf_input.x_;
@@ -1367,7 +1370,7 @@ int main(int argc, char **argv)
         /******* Publish odometry downsample *******/
         if (!publish_odometry_without_downsample)
         {
-            publish_odometry(pubOdomAftMapped);
+            publish_odometry(pubOdomAftMapped,nh);
         }
 
         /*** add the feature points to map kdtree ***/
